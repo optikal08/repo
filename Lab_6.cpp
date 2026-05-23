@@ -2,9 +2,10 @@
 #include <string>
 #include <cmath>
 #include <cassert>
+#include <vector>
 
 using namespace std;
- 
+
 struct Transformer;
 struct Number;
 struct BinaryOperation;
@@ -124,7 +125,7 @@ std::string const &Variable::name() const { return name_; }
 double Variable::evaluate() const { return 0.0; }
 Expression *Variable::transform(Transformer *tr) const { return tr->transformVariable(this); }
 
-//  Задание 1 
+// Задание 1
 struct CopySyntaxTree : Transformer
 {
     Expression *transformNumber(Number const *number) override
@@ -148,7 +149,7 @@ struct CopySyntaxTree : Transformer
     }
 };
 
-//  Задание 2 
+// Задание 2
 struct FoldConstants : Transformer
 {
     Expression *transformNumber(Number const *number) override
@@ -195,8 +196,149 @@ struct FoldConstants : Transformer
     }
 };
 
+// Задание 3. Вариант 15 - Ингредиенты и Рецепт
+struct IngredientVisitor;
+struct Potato;
+struct Beetroot;
+struct Onion;
+struct Mayonnaise;
+struct Fish;
+
+// продукты
+struct Ingredient {
+    virtual ~Ingredient() {}
+    virtual void accept(IngredientVisitor* v) const = 0; // метод для Visitor
+    virtual double getCaloriesPer100g() const = 0; // калорийность на 100г
+    virtual double getWeight() const = 0; // вес в граммах
+    virtual string getName() const = 0; // название продукта
+};
+
+// Интерфейс для ингредиентов
+struct IngredientVisitor {
+    virtual ~IngredientVisitor() {}
+    virtual void visitPotato(Potato const*) = 0;
+    virtual void visitBeetroot(Beetroot const*) = 0;
+    virtual void visitOnion(Onion const*) = 0;
+    virtual void visitMayonnaise(Mayonnaise const*) = 0;
+    virtual void visitFish(Fish const*) = 0;
+};
+
+// Конкретный ингредиент
+struct Potato : Ingredient {
+    Potato(double weight) : weight_(weight) {}
+    void accept(IngredientVisitor* v) const override { v->visitPotato(this); }
+    double getCaloriesPer100g() const override { return 77.0; } // 77 ккал на 100г
+    double getWeight() const override { return weight_; }
+    string getName() const override { return "Potato"; }
+private:
+    double weight_;
+};
+
+struct Beetroot : Ingredient {
+    Beetroot(double weight) : weight_(weight) {}
+    void accept(IngredientVisitor* v) const override { v->visitBeetroot(this); }
+    double getCaloriesPer100g() const override { return 43.0; } // 43 ккал на 100г
+    double getWeight() const override { return weight_; }
+    string getName() const override { return "Beetroot"; }
+private:
+    double weight_;
+};
+
+struct Onion : Ingredient {
+    Onion(double weight) : weight_(weight) {}
+    void accept(IngredientVisitor* v) const override { v->visitOnion(this); }
+    double getCaloriesPer100g() const override { return 40.0; } // 40 ккал на 100г
+    double getWeight() const override { return weight_; }
+    string getName() const override { return "Onion"; }
+private:
+    double weight_;
+};
+
+struct Mayonnaise : Ingredient {
+    Mayonnaise(double weight) : weight_(weight) {}
+    void accept(IngredientVisitor* v) const override { v->visitMayonnaise(this); }
+    double getCaloriesPer100g() const override { return 680.0; } // 680 ккал на 100г
+    double getWeight() const override { return weight_; }
+    string getName() const override { return "Mayonnaise"; }
+private:
+    double weight_;
+};
+
+struct Fish : Ingredient {
+    Fish(double weight) : weight_(weight) {}
+    void accept(IngredientVisitor* v) const override { v->visitFish(this); }
+    double getCaloriesPer100g() const override { return 150.0; } // 150 ккал на 100г
+    double getWeight() const override { return weight_; }
+    string getName() const override { return "Fish"; }
+private:
+    double weight_;
+};
+
+// рецепт блюда
+struct Recipe {
+    void addIngredient(Ingredient* ing) {
+        ingredients_.push_back(ing);
+    }
+    ~Recipe() {
+        for (auto ing : ingredients_) {
+            delete ing;
+        }
+    }
+    // Применяет посетителя ко всем ингредиентам
+    void accept(IngredientVisitor* v) const {
+        for (auto ing : ingredients_) {
+            ing->accept(v);
+        }
+    }
+private:
+    vector<Ingredient*> ingredients_;
+};
+
+// Вывод состава рецепта
+struct PrintIngredientsVisitor : IngredientVisitor {
+    void visitPotato(Potato const* p) override {
+        cout << p->getName() << " – " << p->getWeight() << "g, " << p->getCaloriesPer100g() << " kcal/100g" << endl;
+    }
+    void visitBeetroot(Beetroot const* b) override {
+        cout << b->getName() << " – " << b->getWeight() << "g, " << b->getCaloriesPer100g() << " kcal/100g" << endl;
+    }
+    void visitOnion(Onion const* o) override {
+        cout << o->getName() << " – " << o->getWeight() << "g, " << o->getCaloriesPer100g() << " kcal/100g" << endl;
+    }
+    void visitMayonnaise(Mayonnaise const* m) override {
+        cout << m->getName() << " – " << m->getWeight() << "g, " << m->getCaloriesPer100g() << " kcal/100g" << endl;
+    }
+    void visitFish(Fish const* f) override {
+        cout << f->getName() << " – " << f->getWeight() << "g, " << f->getCaloriesPer100g() << " kcal/100g" << endl;
+    }
+};
+
+// Подсчёт общей калорийности блюда
+struct CalorieCounterVisitor : IngredientVisitor {
+    CalorieCounterVisitor() : totalCalories(0.0) {}
+    void visitPotato(Potato const* p) override {
+        totalCalories += (p->getWeight() / 100.0) * p->getCaloriesPer100g();
+    }
+    void visitBeetroot(Beetroot const* b) override {
+        totalCalories += (b->getWeight() / 100.0) * b->getCaloriesPer100g();
+    }
+    void visitOnion(Onion const* o) override {
+        totalCalories += (o->getWeight() / 100.0) * o->getCaloriesPer100g();
+    }
+    void visitMayonnaise(Mayonnaise const* m) override {
+        totalCalories += (m->getWeight() / 100.0) * m->getCaloriesPer100g();
+    }
+    void visitFish(Fish const* f) override {
+        totalCalories += (f->getWeight() / 100.0) * f->getCaloriesPer100g();
+    }
+    double getTotal() const { return totalCalories; }
+private:
+    double totalCalories;
+};
+
 int main()
 {
+    // Задания 1
     Number* n32 = new Number(32.0);
     Number* n16 = new Number(16.0);
     BinaryOperation* minus = new BinaryOperation(n32, BinaryOperation::MINUS, n16);
@@ -205,13 +347,12 @@ int main()
     BinaryOperation* mult = new BinaryOperation(var, BinaryOperation::MUL, callSqrt);
     FunctionCall* callAbs = new FunctionCall("abs", mult);
 
-    // Задание 1
     CopySyntaxTree cst;
     Expression* copy = callAbs->transform(&cst);
     cout << "Original: " << callAbs->evaluate() << endl;
     cout << "Copy: " << copy->evaluate() << endl;
 
-    // Задание 2
+    // Задания 2
     Number* n32b = new Number(32.0);
     Number* n16b = new Number(16.0);
     BinaryOperation* minus2 = new BinaryOperation(n32b, BinaryOperation::MINUS, n16b);
@@ -228,6 +369,25 @@ int main()
     delete copy;
     delete abs2;
     delete folded;
+
+    // Задание 3
+    // Создаём рецепт салата
+    Recipe salad;
+    salad.addIngredient(new Potato(200)); // 200г картофеля
+    salad.addIngredient(new Beetroot(150)); // 150г свёклы
+    salad.addIngredient(new Onion(50)); // 50г лука
+    salad.addIngredient(new Mayonnaise(30)); // 30г майонеза
+    salad.addIngredient(new Fish(100)); // 100г рыбы
+
+    // Выводим состав рецепта
+    cout << "\n Recipe composition " << endl;
+    PrintIngredientsVisitor printVisitor;
+    salad.accept(&printVisitor);
+
+    // Подсчитываем общую калорийность
+    CalorieCounterVisitor calorieVisitor;
+    salad.accept(&calorieVisitor);
+    cout << "\nTotal calories: " << calorieVisitor.getTotal() << " kcal" << endl;
 
     return 0;
 }
